@@ -10,12 +10,13 @@ let Server = mongo.Server;
 let Db = mongo.Db;
 let utils = require('./utils');
 let defaults = require('./defaults');
+let resourceDefaults = require('./resourceDefaults');
 
 class Presto {
 
 	constructor(config) {
 
-		this.config = extend({}, defaults, config);
+		this.config = extend(true, {}, defaults, config);
 
 		if (this.config.version) {
 			this.config.base = '/' + this.config.version + '/';
@@ -23,8 +24,12 @@ class Presto {
 
 		this.resources = {};
 		this.config.resources.forEach(resource => {
-			if(resource && resource.name) {
-				this.resources[resource.name] = resource;
+			if(resource) {
+				if(typeof resource === 'string') {
+					this.resources[resource] = extend(true, {}, resourceDefaults, {name: resource});
+				} else if(typeof resource === 'object' && resource.name) {
+					this.resources[resource.name] = extend(true, {}, resourceDefaults, resource);
+				}
 			}
 		});
 
@@ -58,13 +63,12 @@ class Presto {
 	}
 
 	_defineRoutes() {
-		let resources = this.config.resources;
-
-		if (resources && resources.length > 0) {
-			resources.forEach(resource => {
-				let name = resource.name;
+		for(let key in this.resources) {
+			if(this.resources.hasOwnProperty(key)) {
+				let resource = this.resources[key],
+					name = resource.name;
 				if (name) {
-					if (resource.get === true || resource.get === undefined) {
+					if (resource.get === true) {
 						this.app.get(this.config.base + name + '/:id', this._findItemById(resource));
 						this.app.get(this.config.base + name + '/*', this._findItems(resource));
 					}
@@ -80,24 +84,24 @@ class Presto {
 						this.app.delete(this.config.base + name + '/:id', this._deleteItem(resource));
 					}
 				}
-			});
+			}
 		}
 	}
 
 	_defineIndex() {
-		let resources = this.config.resources;
 		this.app.get(this.config.base, (req, res) => {
 			res.writeHead(200, {
 				'Content-Type': 'text/html'
 			});
 			let html = '<h2>' + this.config.name + '</h2>';
-			if (resources && resources.length > 0) {
-				html += '<ul>';
-				resources.forEach(resource => {
+			html += '<ul>';
+			for(let key in this.resources) {
+				if(this.resources.hasOwnProperty(key)) {
+					let resource = this.resources[key];
 					html += '<li><a href="' + this.config.base + resource.name + '/">' + resource.name + '</a></li>';
-				});
-				html += '</ul>';
+				}
 			}
+			html += '</ul>';
 			res.write(html);
 			res.end();
 		});
@@ -130,7 +134,6 @@ class Presto {
 
 	_findItemById(resource) {
 		return (req, res) => {
-			console.log("@@@ find items by id: " + req.params.id);
 			let resourceName = resource.name,
 				fields = req.presto.params.fields || {},
 				// id = req.presto.params.id,
