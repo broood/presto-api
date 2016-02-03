@@ -1,14 +1,18 @@
 presto-api
 ==========
 
-Instantly setup a REST API for any collection of mongo documents.
+Easily build a RESTful API on top of MongoDB collections.
 
-Getting Started
+In order to start building something, it's often necessary to set up a RESTful API.  Presto-API allows you to build an API-by-configuration, rather than API-by-middleware.
+
+Typical Usage
 ---------------
 
+The below snippet shows how one can quickly get an API set up.  With the below, you now have an API running that can handle typical RESTful operations (GET, POST, PUT and DELETE).
+
 ```js
-var Presto = require('presto-api');
-var api = new Presto({
+let Presto = require('presto-api');
+let api = new Presto({
 	name: 'api.widgets.com',
 	version: 'v0',
 	port: 3000,
@@ -46,6 +50,22 @@ api.init();
 
 Configuration Options
 =====================
+
+Minimal Configuration
+=====================
+
+At the absolute minimum Presto-API requires an array of resources.  Typically this is an array of configuration options that describe how an API endpoint should handle a particular resource.  However, you can also pass a string array of resource names.  In this case, Presto-API will use sensible defaults to complete the setup.  See defaults section for more.
+
+Minimal Usage
+-------------
+
+```js
+let Presto = require('presto-api');
+let api = new Presto({
+	resources: ['widgets']
+});
+```
+
 
 
 
