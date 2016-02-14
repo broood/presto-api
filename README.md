@@ -61,110 +61,147 @@ api.init();
 
 ###Configuration Options
 
-######name (optional)
-Type: String
+#####name (optional)
+	Type: String
 
-######version (optional)
-Type: String
+#####version (optional)
+	Type: String
 
-######port (optional)
-Type: Integer
+#####port (optional)
+	Type: Integer
 
-Port on which your API will listen for requests.
+	Port on which your API will listen for requests.
 
-Default: 3000
+	Default: 3000
 
-######jsonp (optional)
-Type: Boolean
+#####jsonp (optional)
+	Type: Boolean
 
-When true, your resource routes will support JSONP formatted responses.
+	When true, your resource routes will support JSONP formatted responses.
 
-Default: true
+	Default: true
 
-######crossDomain (optional)
-Type: Boolean
+#####crossDomain (optional)
+	Type: Boolean
 
-When true, your resource routes will have CORS (cross-origin resource sharing) support.
+	When true, your resource routes will have CORS (cross-origin resource sharing) support.
 
-Default: true
+	Default: true
 
-######crossDomainAllowOrigin (optional)
-Type: String
+#####crossDomainAllowOrigin (optional)
+	Type: String
 
-Specify allowable CORS origins.
+	Specify allowable CORS origins.
 
-Default: * (all origins)
+	Default: * (all origins)
 
-######maxAge (optional)
-Type: Integer
+#####maxAge (optional)
+	Type: Integer
 
-When specified, a Cache-Control header will be added to your GET routes.
+	When specified, a Cache-Control header will be added to your GET routes.
 
-######database.host (optional)
-Type: String
+#####database.host (optional)
+	Type: String
 
-Machine on which mongod is running
+	Machine on which mongod is running
 
-Default: localhost
+	Default: localhost
 
-######database.port (optional)
-Type: Integer
+#####database.port (optional)
+	Type: Integer
 
-Port on which mongod is listening.
+	Port on which mongod is listening.
 
-Default: 27017
+	Default: 27017
 
-######database.name (optional)
-Type: String
+#####database.name (optional)
+	Type: String
 
-Name of your MongoDB database
+	Name of your MongoDB database
+	
+	Default: local
 
-######resources (**required**)
-Type: Array
+#####resources (**required**)
+	Type: Array
 
-Resources in the configuration object correspond to your MongoDB collections.  Presto-API routes will be added For each resource specified here.
+	Resources in the configuration object correspond to your MongoDB collections.  Presto-API routes will be added For each 		resource specified here.
 
-######resource.name (**required**)
-Type: String
+#####resource.name (**required**)
+	Type: String
 
-Name of your resource (MongoDB collection).
+	Name of your resource (MongoDB collection).
 
-######resource.sort (optional)
-Type: Object
+#####resource.sort (optional)
+	Type: Object
 
-When specified, a default sort will be added to GET requests to the specified resource.  This will be overridden if a sort query parameter is specified in the GET request.
+	When specified, a default sort will be added to GET requests to the specified resource.  This will be overridden if a sort 		query parameter is specified in the GET request.
 
-######resource.limit (optional)
+#####resource.limit (optional)
+	Type: Integer
+	
+	Provides a default limit to GET requests to your resource.  This can be overridden by specifying a limit query parameter.
+	
 
-######resource.get (optional)
-When true, a route will be setup that allows GET operations on your collection.
+#####resource.get (optional)
+	Type: Boolean
 
-curl http://localhost:3000/songs/
-curl http://localhost:3000/songs/566073c92f1cc55a23b64f3b
+	When true, a route will be setup that allows GET operations on your collection.
 
-######resoure.post (optional)
-When true, a route will be setup that allows POST operations on your collection.
+	curl http://localhost:3000/songs/
+	curl http://localhost:3000/songs/566073c92f1cc55a23b64f3b
+	
+	Default: true
 
-######resource.put (optional)
-When true, a route will be setup that allows PUT operations on your collection.
+#####resoure.post (optional)
+	Type: Boolean
+	
+	When true, a route will be setup that allows POST operations on your collection.
+	
+	Default: true
 
-######resource.del (optional)
-When true, a route will be setup that allows DELETE operations on your collection.
+#####resource.put (optional)
+	Type: Boolean
+	
+	When true, a route will be setup that allows PUT operations on your collection.
+	
+	Default: true
 
-######resource.schema (optional)
-When provided, Presto-API will ensure that data POSTed or PUT to your API endpoint will conform to the specified schema.
+#####resource.del (optional)
+	Type: Boolean
+	
+	When true, a route will be setup that allows DELETE operations on your collection.
+	
+	Default: true
 
-Presto-API accepts arbitrarily deep JSON objects here and allows for the following field types: string, number, id (MongoDB ObjectID), and date.
+#####resource.schema (optional)
+	Type: Object
+	
+	When provided, Presto-API will ensure that data POSTed or PUT to your API endpoint will conform to the specified schema.
 
-###Working with your Presto-API
+	Presto-API accepts arbitrarily deep JSON objects here and allows for the following field types: string, number, id (MongoDB 		ObjectID), and date.
 
-######fields
-`/songs/?fields=artist,album,name,year` -- include only the specified fields in the result set returned by the Presto-API
+###Querying your Presto-API
 
-######sort
-`/songs/?sort=<field>:<direction>` -- field corresponds to a a field in the MongoDB collection.  Direction is either asc (ascending) or desc (descending) 
-`/songs/?sort=artist:asc` - sort songs by artist name
-`/songs/?sort=artist:asc,album:asc,name:asc` -- specifying primary, secondary and tertiary sorts
+#####fields
+	Type: String
+	
+	Limit your result set by providing a comma-delimited string of fields to be included.
+	
+	Ex: Only include artist, album, name and year in the result set
+	`/songs/?fields=artist,album,name,year`
+
+#####sort
+	Type: String
+	
+	Specify the order in which mongodb documents are returned in your result set by providing a field and a sort direction 			separated by a colon (`?sort=<field>:<direction>`).  Sort direction is either asc (ascending) or desc (descending).  If not 	specified, sort defaults to asc.
+	
+	Ex: Sort songs by artist
+	`/songs/?sort=artist:asc`
+	
+	In order to specify multiple sorts, provide a comma-delimited string of fields and sort directions.
+	
+	Ex: Specify primary, secondary and tertiary sorts
+	`/songs/?sort=artist:asc,album:asc,name:asc`
 
 ######offset
 `/songs/?offset=100&sort=created:desc&limit=10` -- return the 101st - 111th most recently created song objects.
