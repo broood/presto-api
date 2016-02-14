@@ -4,7 +4,20 @@ Easily build a RESTful API on top of MongoDB collections.
 
 In order to start building a project, it's often wise to set up a RESTful API.  Presto-API allows you to build an API-by-configuration, rather than API-by-middleware.
 
-###Typical Usage
+###Usage
+
+###Minimal Configuration
+
+At the minimum Presto-API requires an array of resources so that it can map API routes to your MongoDB collections.  Typically this is an array of configuration options that describe how an API endpoint should handle a particular resource.  However, you can also pass a string array of resource names.  In this case, Presto-API will use sensible defaults to complete the setup.  See defaults section for more.
+
+###Minimal Usage
+```js
+let Presto = require('presto-api');
+let api = new Presto({
+	resources: ['widgets']
+});
+api.init();
+```
 
 The below snippet shows how one can quickly get an API set up.  With the below, you now have an API running that can handle typical RESTful operations (GET, POST, PUT and DELETE).
 
@@ -46,46 +59,80 @@ let api = new Presto({
 api.init();
 ```
 
-###Minimal Configuration
-
-At the absolute minimum Presto-API requires an array of resources so that it can map API routes to your MongoDB collections.  Typically this is an array of configuration options that describe how an API endpoint should handle a particular resource.  However, you can also pass a string array of resource names.  In this case, Presto-API will use sensible defaults to complete the setup.  See defaults section for more.
-
-###Minimal Usage
-```js
-let Presto = require('presto-api');
-let api = new Presto({
-	resources: ['widgets']
-});
-api.init();
-```
-
 ###Configuration Options
 
 ######name (optional)
+Type: String
 
 ######version (optional)
+Type: String
 
 ######port (optional)
+Type: Integer
+
+Port on which your API will listen for requests.
+
+Default: 3000
 
 ######jsonp (optional)
+Type: Boolean
+
+When true, your resource routes will support JSONP formatted responses.
+
+Default: true
 
 ######crossDomain (optional)
+Type: Boolean
+
+When true, your resource routes will have CORS (cross-origin resource sharing) support.
+
+Default: true
 
 ######crossDomainAllowOrigin (optional)
+Type: String
+
+Specify allowable CORS origins.
+
+Default: * (all origins)
 
 ######maxAge (optional)
+Type: Integer
+
+When specified, a Cache-Control header will be added to your GET routes.
 
 ######database.host (optional)
+Type: String
+
+Machine on which mongod is running
+
+Default: localhost
 
 ######database.port (optional)
+Type: Integer
+
+Port on which mongod is listening.
+
+Default: 27017
 
 ######database.name (optional)
+Type: String
+
+Name of your MongoDB database
 
 ######resources (**required**)
+Type: Array
 
-######resource.name (optional)
+Resources in the configuration object correspond to your MongoDB collections.  Presto-API routes will be added For each resource specified here.
+
+######resource.name (**required**)
+Type: String
+
+Name of your resource (MongoDB collection).
 
 ######resource.sort (optional)
+Type: Object
+
+When specified, a default sort will be added to GET requests to the specified resource.  This will be overridden if a sort query parameter is specified in the GET request.
 
 ######resource.limit (optional)
 
