@@ -61,87 +61,87 @@ api.init();
 
 ###Configuration Options
 
-#####name (optional)
+#####>> name (optional)
 Type: String
 
-#####version (optional)
+#####>> version (optional)
 Type: String
 
-#####port (optional)
+#####>> port (optional)
 Type: Integer
 
 Port on which your API will listen for requests.
 
 Default: 3000
 
-#####jsonp (optional)
+#####>> jsonp (optional)
 Type: Boolean
 
 When true, your resource routes will support JSONP formatted responses.
 
 Default: true
 
-#####crossDomain (optional)
+#####>> crossDomain (optional)
 Type: Boolean
 
 When true, your resource routes will have CORS (cross-origin resource sharing) support.
 
 Default: true
 
-#####crossDomainAllowOrigin (optional)
+#####>> crossDomainAllowOrigin (optional)
 Type: String
 
 Specify allowable CORS origins.
 
 Default: * (all origins)
 
-#####maxAge (optional)
+#####>> maxAge (optional)
 Type: Integer
 
 When specified, a Cache-Control header will be added to your GET routes.
 
-#####database.host (optional)
+#####>> database.host (optional)
 Type: String
 
 Machine on which mongod is running
 
 Default: localhost
 
-#####database.port (optional)
+#####>> database.port (optional)
 Type: Integer
 
 Port on which mongod is listening.
 
 Default: 27017
 
-#####database.name (optional)
+#####>> database.name (optional)
 Type: String
 
 Name of your MongoDB database
 	
 Default: local
 
-#####resources (**required**)
+#####>> resources (**required**)
 Type: Array
 
 Resources in the configuration object correspond to your MongoDB collections.  Presto-API routes will be added For each 		resource specified here.
 
-#####resource.name (**required**)
+#####>> resource.name (**required**)
 Type: String
 
 Name of your resource (MongoDB collection).
 
-#####resource.sort (optional)
+#####>> resource.sort (optional)
 Type: Object
 
 When specified, a default sort will be added to GET requests to the specified resource.  This will be overridden if a sort 		query parameter is specified in the GET request.
 
-#####resource.limit (optional)
+#####>> resource.limit (optional)
 Type: Integer
 	
 Provides a default limit to GET requests to your resource.  This can be overridden by specifying a limit query parameter.
 
-#####resource.get (optional)
+#####>> resource.get (optional)
 Type: Boolean
 
 When true, a route will be setup that allows GET operations on your collection.
@@ -151,28 +151,28 @@ curl http://localhost:3000/songs/566073c92f1cc55a23b64f3b
 	
 Default: true
 
-#####resoure.post (optional)
+#####>> resoure.post (optional)
 Type: Boolean
 	
 When true, a route will be setup that allows POST operations on your collection.
 	
 Default: true
 
-#####resource.put (optional)
+#####>> resource.put (optional)
 Type: Boolean
 	
 When true, a route will be setup that allows PUT operations on your collection.
 	
 Default: true
 
-#####resource.del (optional)
+#####>> resource.del (optional)
 Type: Boolean
 	
 When true, a route will be setup that allows DELETE operations on your collection.
 	
 Default: true
 
-#####resource.schema (optional)
+#####>> resource.schema (optional)
 Type: Object
 	
 When provided, Presto-API will ensure that data POSTed or PUT to your API endpoint will conform to the specified schema.
@@ -181,13 +181,15 @@ Presto-API accepts arbitrarily deep JSON objects here and allows for the followi
 
 ###Querying your Presto-API
 
-#####fields	
+#####>> fields	
 Type: String
 	
 Limit your result set by providing a comma-delimited string of fields to be included.
 	
 Ex: Only include artist, album, name and year in the result set
-`/songs/?fields=artist,album,name,year`
+```
+/songs/?fields=artist,album,name,year
+```
 
 #####sort
 Type: String
