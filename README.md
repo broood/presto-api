@@ -62,166 +62,179 @@ api.init();
 ###Configuration Options
 
 #####name (optional)
-	Type: String
+Type: String
 
 #####version (optional)
-	Type: String
+Type: String
 
 #####port (optional)
-	Type: Integer
+Type: Integer
 
-	Port on which your API will listen for requests.
+Port on which your API will listen for requests.
 
-	Default: 3000
+Default: 3000
 
 #####jsonp (optional)
-	Type: Boolean
+Type: Boolean
 
-	When true, your resource routes will support JSONP formatted responses.
+When true, your resource routes will support JSONP formatted responses.
 
-	Default: true
+Default: true
 
 #####crossDomain (optional)
-	Type: Boolean
+Type: Boolean
 
-	When true, your resource routes will have CORS (cross-origin resource sharing) support.
+When true, your resource routes will have CORS (cross-origin resource sharing) support.
 
-	Default: true
+Default: true
 
 #####crossDomainAllowOrigin (optional)
-	Type: String
+Type: String
 
-	Specify allowable CORS origins.
+Specify allowable CORS origins.
 
-	Default: * (all origins)
+Default: * (all origins)
 
 #####maxAge (optional)
-	Type: Integer
+Type: Integer
 
-	When specified, a Cache-Control header will be added to your GET routes.
+When specified, a Cache-Control header will be added to your GET routes.
 
 #####database.host (optional)
-	Type: String
+Type: String
 
-	Machine on which mongod is running
+Machine on which mongod is running
 
-	Default: localhost
+Default: localhost
 
 #####database.port (optional)
-	Type: Integer
+Type: Integer
 
-	Port on which mongod is listening.
+Port on which mongod is listening.
 
-	Default: 27017
+Default: 27017
 
 #####database.name (optional)
-	Type: String
+Type: String
 
-	Name of your MongoDB database
+Name of your MongoDB database
 	
-	Default: local
+Default: local
 
 #####resources (**required**)
-	Type: Array
+Type: Array
 
-	Resources in the configuration object correspond to your MongoDB collections.  Presto-API routes will be added For each 		resource specified here.
+Resources in the configuration object correspond to your MongoDB collections.  Presto-API routes will be added For each 		resource specified here.
 
 #####resource.name (**required**)
-	Type: String
+Type: String
 
-	Name of your resource (MongoDB collection).
+Name of your resource (MongoDB collection).
 
 #####resource.sort (optional)
-	Type: Object
+Type: Object
 
-	When specified, a default sort will be added to GET requests to the specified resource.  This will be overridden if a sort 		query parameter is specified in the GET request.
+When specified, a default sort will be added to GET requests to the specified resource.  This will be overridden if a sort 		query parameter is specified in the GET request.
 
 #####resource.limit (optional)
-	Type: Integer
+Type: Integer
 	
-	Provides a default limit to GET requests to your resource.  This can be overridden by specifying a limit query parameter.
-	
+Provides a default limit to GET requests to your resource.  This can be overridden by specifying a limit query parameter.
 
 #####resource.get (optional)
-	Type: Boolean
+Type: Boolean
 
-	When true, a route will be setup that allows GET operations on your collection.
+When true, a route will be setup that allows GET operations on your collection.
 
-	curl http://localhost:3000/songs/
-	curl http://localhost:3000/songs/566073c92f1cc55a23b64f3b
+curl http://localhost:3000/songs/
+curl http://localhost:3000/songs/566073c92f1cc55a23b64f3b
 	
-	Default: true
+Default: true
 
 #####resoure.post (optional)
-	Type: Boolean
+Type: Boolean
 	
-	When true, a route will be setup that allows POST operations on your collection.
+When true, a route will be setup that allows POST operations on your collection.
 	
-	Default: true
+Default: true
 
 #####resource.put (optional)
-	Type: Boolean
+Type: Boolean
 	
-	When true, a route will be setup that allows PUT operations on your collection.
+When true, a route will be setup that allows PUT operations on your collection.
 	
-	Default: true
+Default: true
 
 #####resource.del (optional)
-	Type: Boolean
+Type: Boolean
 	
-	When true, a route will be setup that allows DELETE operations on your collection.
+When true, a route will be setup that allows DELETE operations on your collection.
 	
-	Default: true
+Default: true
 
 #####resource.schema (optional)
-	Type: Object
+Type: Object
 	
-	When provided, Presto-API will ensure that data POSTed or PUT to your API endpoint will conform to the specified schema.
+When provided, Presto-API will ensure that data POSTed or PUT to your API endpoint will conform to the specified schema.
 
-	Presto-API accepts arbitrarily deep JSON objects here and allows for the following field types: string, number, id (MongoDB 		ObjectID), and date.
+Presto-API accepts arbitrarily deep JSON objects here and allows for the following field types: string, number, id (MongoDB 		ObjectID), and date.
 
 ###Querying your Presto-API
 
-#####fields
-	Type: String
+#####fields	
+Type: String
 	
-	Limit your result set by providing a comma-delimited string of fields to be included.
+Limit your result set by providing a comma-delimited string of fields to be included.
 	
-	Ex: Only include artist, album, name and year in the result set
-	`/songs/?fields=artist,album,name,year`
+Ex: Only include artist, album, name and year in the result set
+`/songs/?fields=artist,album,name,year`
 
 #####sort
-	Type: String
+Type: String
 	
-	Specify the order in which mongodb documents are returned in your result set by providing a field and a sort direction 			separated by a colon (`?sort=<field>:<direction>`).  Sort direction is either asc (ascending) or desc (descending).  If not 	specified, sort defaults to asc.
+Specify the order in which mongodb documents are returned in your result set by providing a field and a sort direction 			separated by a colon (`?sort=<field>:<direction>`).  Sort direction is either asc (ascending) or desc (descending).  If not 	specified, sort defaults to asc.
 	
-	Ex: Sort songs by artist
-	`/songs/?sort=artist:asc`
+Ex: Sort songs by artist
+`/songs/?sort=artist:asc`
 	
-	In order to specify multiple sorts, provide a comma-delimited string of fields and sort directions.
+In order to specify multiple sorts, provide a comma-delimited string of fields and sort directions.
 	
-	Ex: Specify primary, secondary and tertiary sorts
-	`/songs/?sort=artist:asc,album:asc,name:asc`
+Ex: Specify primary, secondary and tertiary sorts
+`/songs/?sort=artist:asc,album:asc,name:asc`
 
 ######offset
-`/songs/?offset=100&sort=created:desc&limit=10` -- return the 101st - 111th most recently created song objects.
+Type: Integer
 
-######limit
-Limit the number of results returned by Presto-API
-`/songs/?limit=10` -- return no more than 10 songs
+Corresponds to MongoDB's skip functionality -- allows you to specify where MongoDB begins returnings results.
 
-######q
-Full-text search query -- this allows searching of multiple fields.  
-Note that this requires a text index to be set up on the collection.
+Ex: Return the 101st-111th most recently created song objects.
+`/songs/?offset=100&sort=created:desc&limit=10`
 
-`/songs/?q=moon` -- Return all songs in which the artist, album or song name include the word moon.  (In this case a text index has been created for the songs collection including artist, album and song fields).
+#####limit
+Type: Integer
 
-###Presto-API Query Language
-In order to facilitate searching of individual fields of your collections, Presto-API accepts key-value pairs that have been separated from the URI with an underscore -- see the following:
+Limit the number of documents returned in the result set.
+
+Ex: Return no more than 10 songs
+`/songs/?limit=10`
+
+#####q
+Type: String
+
+Full-text search query -- this allows searching of multiple fields.  Note that this requires a text index to be set up on the collection.
+
+Ex: Return all songs in which the artist, album or song name include the word moon.  (In this case a text index has been created for the songs collection including artist, album and song fields).
+`/songs/?q=moon`
+
+###Field-specified Querying
+In order to facilitate searching of individual fields of your collections, Presto-API accepts key-value pairs that have been separated from the URI with an underscore.
 `/songs/_/<property_name>/<property_value>`
 
-`/songs/_/artist/beirut` -- return all Beirut songs
-`/songs/_/artist/beirut/year/2006` -- return all Beirut songs from 2006
+Ex: Return all songs by Beirut
+`/songs/_/artist/beirut`
+
+Ex: Return all songs by Beirut from the year 2006
+`/songs/_/artist/beirut/year/2006`
 
 
 
