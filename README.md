@@ -191,52 +191,68 @@ Ex: Only include artist, album, name and year in the result set
 /songs/?fields=artist,album,name,year
 ```
 
-#####sort
+#####>> sort
 Type: String
 	
 Specify the order in which mongodb documents are returned in your result set by providing a field and a sort direction 			separated by a colon (`?sort=<field>:<direction>`).  Sort direction is either asc (ascending) or desc (descending).  If not 	specified, sort defaults to asc.
 	
 Ex: Sort songs by artist
-`/songs/?sort=artist:asc`
+```
+/songs/?sort=artist:asc
+```
 	
 In order to specify multiple sorts, provide a comma-delimited string of fields and sort directions.
 	
 Ex: Specify primary, secondary and tertiary sorts
-`/songs/?sort=artist:asc,album:asc,name:asc`
+```
+/songs/?sort=artist:asc,album:asc,name:asc
+```
 
-######offset
+######>> offset
 Type: Integer
 
 Corresponds to MongoDB's skip functionality -- allows you to specify where MongoDB begins returnings results.
 
 Ex: Return the 101st-111th most recently created song objects.
-`/songs/?offset=100&sort=created:desc&limit=10`
+```
+/songs/?offset=100&sort=created:desc&limit=10
+```
 
-#####limit
+#####>> limit
 Type: Integer
 
 Limit the number of documents returned in the result set.
 
 Ex: Return no more than 10 songs
-`/songs/?limit=10`
+```
+/songs/?limit=10
+```
 
-#####q
+#####>> q
 Type: String
 
 Full-text search query -- this allows searching of multiple fields.  Note that this requires a text index to be set up on the collection.
 
 Ex: Return all songs in which the artist, album or song name include the word moon.  (In this case a text index has been created for the songs collection including artist, album and song fields).
-`/songs/?q=moon`
+```
+/songs/?q=moon
+```
 
-###Field-specified Querying
+###Field-specific Querying
 In order to facilitate searching of individual fields of your collections, Presto-API accepts key-value pairs that have been separated from the URI with an underscore.
-`/songs/_/<property_name>/<property_value>`
+```
+/songs/_/<property_name>/<property_value>
+```
 
 Ex: Return all songs by Beirut
-`/songs/_/artist/beirut`
+```
+/songs/_/artist/beirut
+```
 
 Ex: Return all songs by Beirut from the year 2006
-`/songs/_/artist/beirut/year/2006`
+```
+/songs/_/artist/beirut/year/2006
+```
 
 
 
