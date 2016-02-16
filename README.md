@@ -4,28 +4,31 @@ Easily build a RESTful API on top of MongoDB collections.
 
 In order to start building a project, it's often wise to set up a RESTful API.  Presto-API allows you to build an API-by-configuration, rather than API-by-middleware.
 
-###Usage
+##Usage
+
+Throughout this document, we'll be referring to collection of documents representing songs to illustrate various Presto capabilities.  Song documents have the following properties: _id (ObjectID), name (String), artist (String), album (String), year (Integer), created (Date), modified (Date) fields.
 
 ###Minimal Configuration
 
 At the minimum Presto-API requires an array of resources so that it can map API routes to your MongoDB collections.  Typically this is an array of configuration options that describe how an API endpoint should handle a particular resource.  However, you can also pass a string array of resource names.  In this case, Presto-API will use sensible defaults to complete the setup.  See defaults section for more.
 
-###Minimal Usage
 ```js
 let Presto = require('presto-api');
 let api = new Presto({
-	resources: ['widgets']
+	resources: ['songs']
 });
 api.init();
 ```
 
-The below snippet shows how one can quickly get an API set up.  With the below, you now have an API running that can handle typical RESTful operations (GET, POST, PUT and DELETE).
+With the mimimal configuration above, you now have support for all REST operations on your songs collection, as well as Presto's advanced querying capabilities.  Additionally, by default, you have support for JSONP and CORS.
+
+###Typical Configuration
+
+The below snippet shows how you configure your Presto API more granularly.  For example, you can specify options at a resource by resource level.  Should each route support JSONP and CORS?  Should some routes limit which origins are allowed access?  Additionally, you can specify default sorts, default limits and a per-resource max-age/cache-control values.  Finally, you can provide a schema for the resource.  Doing so will allow Presto to enforce your schema - POST and PUT operations that don't conform to your schema will be rejected.
 
 ```js
 let Presto = require('presto-api');
 let api = new Presto({
-	name: 'api.widgets.com',
-	version: 'v0',
 	port: 3000,
 	jsonp: true,
 	crossDomain: true,
@@ -38,19 +41,22 @@ let api = new Presto({
 	},
 	resources: [
 		{
-			name: 'widgets',
-			sort: { widget_id: 1 },
+			name: 'songs',
+			sort: { song_id: 'asc' },
 			limit: 20,
 			get: true,
 			post: true,
 			put: true,
 			del: true,
 			schema: {
-				widget_id: 'number',
+				_id: 'id',
+				song_id: 'number',
+				artist: 'string',
 				name: 'string',
-				price: 'string',
-				img_path: 'string',
-				for_sale: 'boolean'
+				album: 'string',
+				year: 'number',
+				created: 'date',
+				modified: 'date'
 			}
 		}
 	]
@@ -65,9 +71,18 @@ api.init();
 ---------------
 Type: String
 
+Used internally to refer to your API.
+
 #####version (optional)
 -----------------------
 Type: String
+
+Prefix your API routes with a version.  When specified, routes will be set up below this version.
+
+Ex: When version is set to 'v0', your songs route will be available as below:
+```
+/v0/songs/
+```
 
 #####port (optional)
 --------------------
@@ -229,17 +244,6 @@ Ex: Specify primary, secondary and tertiary sorts
 /songs/?sort=artist:asc,album:asc,name:asc
 ```
 
-######offset
-------------
-Type: Integer
-
-Corresponds to MongoDB's skip functionality -- allows you to specify where MongoDB begins returnings results.
-
-Ex: Return the 101st-111th most recently created song objects.
-```
-/songs/?offset=100&sort=created:desc&limit=10
-```
-
 #####limit
 ----------
 Type: Integer
@@ -249,6 +253,17 @@ Limit the number of documents returned in the result set.
 Ex: Return no more than 10 songs
 ```
 /songs/?limit=10
+```
+
+######offset
+------------
+Type: Integer
+
+Corresponds to MongoDB's skip functionality -- allows you to specify where MongoDB begins returnings results.
+
+Ex: Return the 101st-111th most recently created song objects.
+```
+/songs/?offset=100&sort=created:desc&limit=10
 ```
 
 #####q
