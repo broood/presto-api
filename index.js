@@ -3,8 +3,8 @@
 
 let express = require('express');
 let bodyParser = require('body-parser');
+let compress = require('compression');
 let mongo = require('mongodb');
-let bsonify = require('bsonify');
 let extend = require('extend');
 let Server = mongo.Server;
 let Db = mongo.Db;
@@ -30,13 +30,53 @@ class Presto {
 				} else if(typeof resource === 'object' && resource.name) {
 					this.resources[resource.name] = extend(true, {}, resourceDefaults, resource);
 				}
+
+				if(resource.schema) {
+					// @TODO this needs to be recursive and support arbitrarily deep structures
+					let schema = {properties: {}};
+					for(let field in resource.schema) {
+						if(resource.schema.hasOwnProperty(field)) {
+							let type = resource.schema[field];
+
+							if(type === 'id') {
+								schema.properties[field] = {
+									type: 'string',
+									conform: function(val) {
+										return val.test(/^[0-9a-fA-F]{24}$/);
+									},
+									messages: {
+										type: 'Expected a MongoDB id',
+										format: 'Expected a MongoDB id'
+									},
+									prestoType: 'id'
+								};
+							} else if(type === 'date') {
+								schema.properties[field] = {
+									type: 'string',
+									format: 'date'
+								};
+							} else if(type === 'date-time') {
+								schema.properties[field] = {
+									type: 'string',
+									format: 'date-time'
+								};
+							} else {
+								schema.properties[field] = {
+									type: type
+								}
+							}
+						}
+					}
+
+					this.resources[resource.name].schema = schema;
+				}
 			}
 		});
 
 		this.app = new express();
 
 		this.app.use(bodyParser.json());
-		this.app.use(utils.middleware.bind(this));
+		this.app.use(compress());
 
 		this._defineIndex();
 		this._defineRoutes();
@@ -63,25 +103,26 @@ class Presto {
 	}
 
 	_defineRoutes() {
+
+		let middleware = utils.middleware.bind(this);
+
 		for(let key in this.resources) {
 			if(this.resources.hasOwnProperty(key)) {
 				let resource = this.resources[key],
 					name = resource.name;
 				if (name) {
 					if (resource.get === true) {
-						this.app.get(this.config.base + name + '/:id', this._findItemById(resource));
-						this.app.get(this.config.base + name + '/*', this._findItems(resource));
+						this.app.get(this.config.base + name + '/:id', middleware, this._findItemById(resource));
+						this.app.get(this.config.base + name + '*', middleware, this._findItems(resource));
 					}
 					if (resource.post === true) {
-						// @TODO - define a schema?
-						this.app.post(this.config.base + name, this._addItem(resource));
+						this.app.post(this.config.base + name, middleware, this._addItem(resource));
 					}
 					if (resource.put === true) {
-						// @TODO ensure updated item matches schema
-						this.app.put(this.config.base + name + '/:id', this._updateItem(resource));
+						this.app.put(this.config.base + name + '/:id', middleware, this._updateItem(resource));
 					}
 					if (resource.del === true) {
-						this.app.delete(this.config.base + name + '/:id', this._deleteItem(resource));
+						this.app.delete(this.config.base + name + '/:id', middleware, this._deleteItem(resource));
 					}
 				}
 			}
@@ -111,7 +152,7 @@ class Presto {
 		return (req, res) => {
 			// @TODO use object destructuring
 			let resourceName = resource.name,
-				query = req.presto.params.query,
+				query = req.presto.query,
 				fields = req.presto.params.fields,
 				sort = req.presto.params.sort,
 				limit = req.presto.params.limit,
@@ -135,23 +176,16 @@ class Presto {
 	_findItemById(resource) {
 		return (req, res) => {
 			let resourceName = resource.name,
+				query = req.presto.query,
 				fields = req.presto.params.fields || {},
-				// id = req.presto.params.id,
-				id = req.params.id,
 				start = +new Date();
-
-			if (this.initialized !== true) {
-				return res.presto.error('Database failed to initialize');
-			}
 
 			this.db.collection(resourceName, (err, collection) => {
 				if (err) {
 					return res.presto.error(err);
 				}
 
-				collection.findOne({
-					_id: bsonify.convert(id)
-				}, fields, (err, item) => {
+				collection.findOne(query, fields, (err, item) => {
 					if (err) {
 						return res.presto.error(err);
 					}
@@ -164,16 +198,7 @@ class Presto {
 	_addItem(resource) {
 		return (req, res) => {
 			let resourceName = resource.name,
-				item = req.body,
-				d = new Date();
-
-			if (this.initialized !== true) {
-				return res.presto.error('Database failed to initialize');
-			}
-
-			item = bsonify.convert(item);
-			item.created = item.created || d;
-			item.modified = item.modified || d;
+				item = req.presto.item;
 
 			this.db.collection(resourceName, (err, collection) => {
 				if (err) {
@@ -195,19 +220,13 @@ class Presto {
 	_deleteItem(resource) {
 		return (req, res) => {
 			let resourceName = resource.name,
-				id = resource.id || req.params.id;
-
-			if (this.initialized !== true) {
-				return res.presto.error('Database failed to initialize');
-			}
+				query = req.presto.query;
 
 			this.db.collection(resourceName, (err, collection) => {
 				if (err) {
 					return res.presto.error(err);
 				}
-				collection.remove({
-					_id: bsonify.convert(id)
-				}, {
+				collection.remove(query, {
 					safe: true
 				}, (err, result) => {
 					if (err) {
@@ -225,32 +244,21 @@ class Presto {
 	_updateItem(resource) {
 		return (req, res) => {
 			let resourceName = resource.name,
-				id = req.params.id,
-				item = resource.item || req.body,
-				d = new Date();
-
-			if (this.initialized !== true) {
-				return res.presto.error('Database failed to initialize');
-			}
-
-			item = bsonify.convert(item);
-			item.modified = d;
+				query = req.presto.query,
+				item = req.presto.item;
 
 			this.db.collection(resourceName, (err, collection) => {
 				if (err) {
 					return res.presto.error(err);
 				}
 
-				collection.update({
-					_id: bsonify.convert(id)
-				}, item, {
+				collection.update(query, item, {
 					safe: true
 				}, (err, result) => {
 					if (err) {
 						return res.presto.error(err);
 					}
 
-					item._id = id;
 					res.presto.send(result);
 				});
 			});
