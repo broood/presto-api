@@ -1,6 +1,6 @@
 {
-  "name": "presto",
-  "description": "Easily build a RESTful API on top of mongodb collections.",
+  "name": "presto-api",
+  "description": "Configure a RESTful API on top of MongoDB collections.",
   "version": "0.1.0",
   "dependencies": {
     "body-parser": "^1.14.1",
