@@ -22,56 +22,7 @@ class Presto {
 			this.config.base = '/' + this.config.version + '/';
 		}
 
-		this.resources = {};
-		this.config.resources.forEach(resource => {
-			if(resource) {
-				if(typeof resource === 'string') {
-					this.resources[resource] = extend(true, {}, resourceDefaults, {name: resource});
-				} else if(typeof resource === 'object' && resource.name) {
-					this.resources[resource.name] = extend(true, {}, resourceDefaults, resource);
-				}
-
-				if(resource.schema) {
-					// @TODO this needs to be recursive and support arbitrarily deep structures
-					let schema = {properties: {}};
-					for(let field in resource.schema) {
-						if(resource.schema.hasOwnProperty(field)) {
-							let type = resource.schema[field];
-
-							if(type === 'id') {
-								schema.properties[field] = {
-									type: 'string',
-									conform: function(val) {
-										return val.test(/^[0-9a-fA-F]{24}$/);
-									},
-									messages: {
-										type: 'Expected a MongoDB id',
-										format: 'Expected a MongoDB id'
-									},
-									prestoType: 'id'
-								};
-							} else if(type === 'date') {
-								schema.properties[field] = {
-									type: 'string',
-									format: 'date'
-								};
-							} else if(type === 'date-time') {
-								schema.properties[field] = {
-									type: 'string',
-									format: 'date-time'
-								};
-							} else {
-								schema.properties[field] = {
-									type: type
-								}
-							}
-						}
-					}
-
-					this.resources[resource.name].schema = schema;
-				}
-			}
-		});
+		this.resources = utils.configureResources(this.config);
 
 		this.app = new express();
 
@@ -82,7 +33,10 @@ class Presto {
 		this._defineRoutes();
 	}
 
-	init() {
+	init(options) {
+
+		if(!options) { options = {} };
+
 		this.server = new Server(this.config.database.host, this.config.database.port, {
 			auto_reconnect: true
 		});
@@ -96,8 +50,11 @@ class Presto {
 				console.log('ERROR: Database failed to open');
 			} else {
 				this.initialized = true;
-				this.app.listen(this.config.port);
-				console.log(this.config.name + ' up and running on port ' + this.config.port);
+
+				if(options.listen !== false) {
+					this.app.listen(this.config.port);
+					console.log(this.config.name + ' up and running on port ' + this.config.port);
+				}
 			}
 		});
 	}
@@ -127,6 +84,10 @@ class Presto {
 				}
 			}
 		}
+
+		this.app.get(this.config.base + "resources", function(req, res) {
+			res.json(this.resources);
+		}.bind(this));
 	}
 
 	_defineIndex() {
@@ -150,119 +111,132 @@ class Presto {
 
 	_findItems(resource) {
 		return (req, res) => {
-			// @TODO use object destructuring
-			let resourceName = resource.name,
-				query = req.presto.query,
-				fields = req.presto.params.fields,
-				sort = req.presto.params.sort,
-				limit = req.presto.params.limit,
-				skip = req.presto.params.skip,
-				start = +new Date();
-
-			this.db.collection(resourceName, (err, collection) => {
-				if (err) {
+			this.findItems(req.presto.params, function(err, items) {
+				if(err) {
 					return res.presto.error(err);
 				}
-				collection.find(query, fields).sort(sort).limit(limit).skip(skip).toArray((err, items) => {
-					if (err) {
-						return res.presto.error(err);
-					}
-					res.presto.send(items, start);
-				});
+				res.presto.send(items, req.presto.params);
 			});
 		};
 	}
 
 	_findItemById(resource) {
 		return (req, res) => {
-			let resourceName = resource.name,
-				query = req.presto.query,
-				fields = req.presto.params.fields || {},
-				start = +new Date();
-
-			this.db.collection(resourceName, (err, collection) => {
-				if (err) {
+			this.findItemById(req.presto.params, function(err, items) {
+				if(err) {
 					return res.presto.error(err);
 				}
-
-				collection.findOne(query, fields, (err, item) => {
-					if (err) {
-						return res.presto.error(err);
-					}
-					res.presto.send(item, start);
-				});
+				res.presto.send(items, req.presto.params);
 			});
 		};
 	}
 
 	_addItem(resource) {
 		return (req, res) => {
-			let resourceName = resource.name,
-				item = req.presto.item;
-
-			this.db.collection(resourceName, (err, collection) => {
-				if (err) {
+			this.addItem(req.presto.params, function(err, items) {
+				if(err) {
 					return res.presto.error(err);
 				}
-
-				collection.insert(item, {
-					safe: true
-				}, (err, results) => {
-					if (err) {
-						return res.presto.error(err);
-					}
-					res.presto.send(results);
-				});
-			});
-		};
-	}
-
-	_deleteItem(resource) {
-		return (req, res) => {
-			let resourceName = resource.name,
-				query = req.presto.query;
-
-			this.db.collection(resourceName, (err, collection) => {
-				if (err) {
-					return res.presto.error(err);
-				}
-				collection.remove(query, {
-					safe: true
-				}, (err, result) => {
-					if (err) {
-						return res.presto.error(err);
-					}
-					res.presto.send({
-						success: true,
-						result: result
-					});
-				});
+				res.presto.send(items, req.presto.params);
 			});
 		};
 	}
 
 	_updateItem(resource) {
 		return (req, res) => {
-			let resourceName = resource.name,
-				query = req.presto.query,
-				item = req.presto.item;
-
-			this.db.collection(resourceName, (err, collection) => {
-				if (err) {
+			this.updateItem(req.presto.params, function(err, result) {
+				if(err) {
 					return res.presto.error(err);
 				}
-
-				collection.update(query, item, {
-					safe: true
-				}, (err, result) => {
-					if (err) {
-						return res.presto.error(err);
-					}
-
-					res.presto.send(result);
-				});
+				res.presto.send(result, req.presto.params);
 			});
 		};
+	}
+
+	_deleteItem(resource) {
+		return (req, res) => {
+			this.deleteItem(req.params.presto, function(err, result) {
+				if(err) {
+					return res.presto.error(err);
+				}
+				res.presto.send(result, req.presto.params);
+			});
+		};
+	}
+
+	findItems(obj, callback) {
+		let collectionName = obj.collectionName,
+			query = obj.query || {},
+			fields = obj.fields || {},
+			sort = obj.sort || {},
+			limit = obj.limit || 0,
+			skip = obj.skip || 0;
+
+		this.db.collection(collectionName, (err, collection) => {
+			if (err) {
+				return callback(err);
+			}
+			collection.find(query, fields).sort(sort).limit(limit).skip(skip).toArray(callback);
+		});
+	}
+
+	findItemById(obj, callback) {
+		let collectionName = obj.collectionName,
+			query = obj.query || {},
+			fields = obj.fields || {};
+
+		this.db.collection(collectionName, (err, collection) => {
+			if (err) {
+				return callback(err);
+			}
+
+			collection.findOne(query, fields, callback);
+		});
+	}
+
+	addItem(obj, callback) {
+		let collectionName = obj.collectionName,
+			item = obj.item;
+
+		this.db.collection(collectionName, (err, collection) => {
+			if (err) {
+				return callback(err);
+			}
+
+			collection.insert(item, {
+				safe: true
+			}, callback);
+		});
+	}
+
+	updateItem(obj, callback) {
+		let collectionName = obj.collectionName,
+			query = obj.query,
+			item = obj.item;
+
+		this.db.collection(collectioName, (err, collection) => {
+			if (err) {
+				return callback(err);
+			}
+
+			collection.update(query, item, {
+				safe: true
+			}, callback);
+		});
+	}
+
+	deleteItem(obj, callback) {
+		let collectionName = obj.collectionName,
+			query = obj.query;
+
+		this.db.collection(collectionName, (err, collection) => {
+			if (err) {
+				return callback(err);
+			}
+			collection.remove(query, {
+				safe: true
+			}, callback);
+		});
 	}
 }
 

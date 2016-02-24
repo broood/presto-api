@@ -1,8 +1,89 @@
 'use strict';
-var bsonify = require('bsonify');
-var revalidator = require('revalidator');
+let extend = require('extend');
+let bsonify = require('bsonify');
+let revalidator = require('revalidator');
+let resourceDefaults = require('./resourceDefaults');
+let mongoIdRegEx = /^[0-9a-fA-F]{24}$/;
+
+function objToRevalidatorFormat(obj) {
+	var schema = {properties: {}};
+	if(typeof obj === 'object') {
+		for(let field in obj) {
+			if(obj.hasOwnProperty(field)) {
+				let type = obj[field];
+
+				if(type === 'id') {
+					schema.properties[field] = {
+						type: 'string',
+						conform: function(val) {
+							return mongoIdRegEx.test(val);
+						},
+						messages: {
+							type: 'Expected a MongoDB id',
+							format: 'Expected a MongoDB id'
+						},
+						_type: 'id'
+					};
+				} else if(type === 'date') {
+					schema.properties[field] = {
+						type: 'string',
+						format: 'date'
+					};
+				} else if(type === 'date-time') {
+					schema.properties[field] = {
+						type: 'string',
+						format: 'date-time'
+					};
+				} else if(type instanceof Array) {
+
+					let arr = [];
+
+					type.forEach(function(entry) {
+						arr.push(objToRevalidatorFormat(entry));
+					});
+
+					schema.properties[field] = arr;
+
+				} else if(typeof type === 'object') {
+					schema.properties[field] = {
+						type: 'object',
+						properties: objToRevalidatorFormat(type).properties
+					};
+				} else {
+					schema.properties[field] = {
+						type: type
+					};
+				}
+			}
+		}
+	} else {
+		schema = { type: obj };
+	}
+
+	return schema;
+}
 
 module.exports = {
+	configureResources: function(config) {
+		let resources = {};
+
+		config.resources.forEach(resource => {
+			if(resource) {
+				if(typeof resource === 'string') {
+					resources[resource] = extend(true, {}, resourceDefaults, {name: resource});
+				} else if(typeof resource === 'object' && resource.name) {
+					resources[resource.name] = extend(true, {}, resourceDefaults, resource);
+				}
+
+				// if the schema is already formatted with properties, don't modify it
+				if(resource.schema && !resource.schema.properties) {
+					resources[resource.name].schema = objToRevalidatorFormat(resource.schema);
+				}
+			}
+		});
+
+		return resources;
+	},
 	middleware: function(req, res, next) {
 
 		let path = req.path;
@@ -26,11 +107,13 @@ module.exports = {
 
 			req.presto = req.presto || {};
 			res.presto = res.presto || {};
-			req.presto.resource = resource;
-			req.presto.params = {};
+			req.presto.params = {
+				collectionName: resource.name,
+				operationStart: +new Date()
+			};
 
 			// extend the response object
-			res.presto.send = (items, start) => {
+			res.presto.send = (items, params) => {
 				if (req.method === 'GET') {
 					if(items && !(items instanceof Array)) {
 						items = [items];
@@ -39,7 +122,7 @@ module.exports = {
 						count: (items && items.length) || 0,
 						items: items || [],
 						cached: false,
-						elapsed: (+new Date() - start)
+						elapsed: (+new Date() - params.operationStart)
 					};
 				}
 				this.config.jsonp ? res.status(200).jsonp(items) : res.status(200).json(items);
@@ -131,7 +214,7 @@ module.exports = {
 				params.limit = limit;
 
 				params.id = req.params.id;
-				req.presto.params = params;
+				req.presto.params = extend({}, req.presto.params, params);
 
 				// QUERY
 				let query = {},
@@ -151,7 +234,7 @@ module.exports = {
 
 							if (field && value) {
 								if (schema[field]) {
-									if (schema[field].prestoType === 'id') {
+									if (schema[field]._type === 'id') {
 										value = bsonify.convert(value);
 									} else if (schema[field].type === 'integer') {
 										value = parseInt(value, 10);
@@ -178,7 +261,7 @@ module.exports = {
 					query.$text = { $search: search };
 				}
 
-				req.presto.query = query;
+				req.presto.params.query = query;
 			}
 
 			let schema = resource.schema && resource.schema.properties;
@@ -191,7 +274,7 @@ module.exports = {
 
 				if(schema && schema[resource.id]) {
 					let field = schema[resource.id];
-					if(field.prestoType === 'id') {
+					if(field._type === 'id') {
 						id = bsonify.convert(id);
 					} else if(field.type === 'integer') {
 						id = parseInt(id, 10);
@@ -201,14 +284,17 @@ module.exports = {
 				query[resource.id] = id;
 
 				req.presto.params.id = id;
-				req.presto.query = query;
+				req.presto.params.query = query;
 			}
 
 			if(req.method === 'PUT' || req.method === 'POST') {
 				let item = req.body,
 					d = +new Date();
 				if(schema) {
-					let result = revalidator.validate(item, schema);
+					console.log("@@@ validating schema @@@");
+					console.log("@@@ schema: " + JSON.stringify(schema));
+					let result = revalidator.validate(item, resource.schema);
+					console.log("@@@ result: " + JSON.stringify(result));
 					if(result.valid === false) {
 						return res.presto.error(result.errors && result.errors[0] || 'Data did not align with schema');
 					}
@@ -218,7 +304,7 @@ module.exports = {
 				item.created = item.created || d;
 				item.modified = item.modified || d;
 
-				req.presto.item = item;
+				req.presto.params.item = item;
 			}
 
 			// global support for CORS?
