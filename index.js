@@ -4,19 +4,20 @@
 let express = require('express');
 let bodyParser = require('body-parser');
 let compress = require('compression');
+let ejs = require('ejs');
 let mongo = require('mongodb');
 let extend = require('extend');
+let path = require('path');
+let utils = require('./utils');
+let configDefaults = require('./defaults/config');
 let Server = mongo.Server;
 let Db = mongo.Db;
-let utils = require('./utils');
-let defaults = require('./defaults');
-let resourceDefaults = require('./resourceDefaults');
 
 class Presto {
 
 	constructor(config) {
 
-		this.config = extend(true, {}, defaults, config);
+		this.config = extend(true, {}, configDefaults, config);
 
 		if (this.config.version) {
 			this.config.base = '/' + this.config.version + '/';
@@ -29,7 +30,10 @@ class Presto {
 		this.app.use(bodyParser.json());
 		this.app.use(compress());
 
-		this._defineIndex();
+		this.app.set('views', __dirname + '/views');
+		this.app.set('view engine', 'ejs');
+		this.app.use(express.static(__dirname + '/public'));
+
 		this._defineRoutes();
 	}
 
@@ -50,10 +54,13 @@ class Presto {
 				console.log('ERROR: Database failed to open');
 			} else {
 				this.initialized = true;
-
 				if(options.listen !== false) {
 					this.app.listen(this.config.port);
 					console.log(this.config.name + ' up and running on port ' + this.config.port);
+				}
+
+				if(options.callback && typeof options.callback === 'function') {
+					options.callback();
 				}
 			}
 		});
@@ -63,10 +70,9 @@ class Presto {
 
 		let middleware = utils.middleware.bind(this);
 
-		for(let key in this.resources) {
-			if(this.resources.hasOwnProperty(key)) {
-				let resource = this.resources[key],
-					name = resource.name;
+		for(let name in this.resources) {
+			if(this.resources.hasOwnProperty(name)) {
+				let resource = this.resources[name];
 				if (name) {
 					if (resource.get === true) {
 						this.app.get(this.config.base + name + '/:id', middleware, this._findItemById(resource));
@@ -84,36 +90,24 @@ class Presto {
 				}
 			}
 		}
-
-		this.app.get(this.config.base + "resources", function(req, res) {
-			res.json(this.resources);
-		}.bind(this));
-	}
-
-	_defineIndex() {
-		this.app.get(this.config.base, (req, res) => {
-			res.writeHead(200, {
-				'Content-Type': 'text/html'
+		
+		if(this.config.index === true) {
+			this.app.get(this.config.base, (req, res) => {
+				res.render('index.ejs', {
+					config: this.config,
+					resources: this.resources,
+					host: req.headers.host,
+					protocol: req.connection.encrypted === true ? 'https' : 'http'
+				});
 			});
-			let html = '<h2>' + this.config.name + '</h2>';
-			html += '<ul>';
-			for(let key in this.resources) {
-				if(this.resources.hasOwnProperty(key)) {
-					let resource = this.resources[key];
-					html += '<li><a href="' + this.config.base + resource.name + '/">' + resource.name + '</a></li>';
-				}
-			}
-			html += '</ul>';
-			res.write(html);
-			res.end();
-		});
+		}
 	}
 
 	_findItems(resource) {
 		return (req, res) => {
 			this.findItems(req.presto.params, function(err, items) {
 				if(err) {
-					return res.presto.error(err);
+					return res.presto.error(400, err);
 				}
 				res.presto.send(items, req.presto.params);
 			});
@@ -124,7 +118,7 @@ class Presto {
 		return (req, res) => {
 			this.findItemById(req.presto.params, function(err, items) {
 				if(err) {
-					return res.presto.error(err);
+					return res.presto.error(400, err);
 				}
 				res.presto.send(items, req.presto.params);
 			});
@@ -133,11 +127,11 @@ class Presto {
 
 	_addItem(resource) {
 		return (req, res) => {
-			this.addItem(req.presto.params, function(err, items) {
+			this.addItem(req.presto.params, function(err, result) {
 				if(err) {
-					return res.presto.error(err);
+					return res.presto.error(400, err);
 				}
-				res.presto.send(items, req.presto.params);
+				res.presto.send(result, req.presto.params);
 			});
 		};
 	}
@@ -146,7 +140,7 @@ class Presto {
 		return (req, res) => {
 			this.updateItem(req.presto.params, function(err, result) {
 				if(err) {
-					return res.presto.error(err);
+					return res.presto.error(400, err);
 				}
 				res.presto.send(result, req.presto.params);
 			});
@@ -155,9 +149,9 @@ class Presto {
 
 	_deleteItem(resource) {
 		return (req, res) => {
-			this.deleteItem(req.params.presto, function(err, result) {
+			this.deleteItem(req.presto.params, function(err, result) {
 				if(err) {
-					return res.presto.error(err);
+					return res.presto.error(400, err);
 				}
 				res.presto.send(result, req.presto.params);
 			});
@@ -198,6 +192,8 @@ class Presto {
 		let collectionName = obj.collectionName,
 			item = obj.item;
 
+		// revalidate at this point?
+
 		this.db.collection(collectionName, (err, collection) => {
 			if (err) {
 				return callback(err);
@@ -214,7 +210,7 @@ class Presto {
 			query = obj.query,
 			item = obj.item;
 
-		this.db.collection(collectioName, (err, collection) => {
+		this.db.collection(collectionName, (err, collection) => {
 			if (err) {
 				return callback(err);
 			}

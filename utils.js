@@ -2,7 +2,7 @@
 let extend = require('extend');
 let bsonify = require('bsonify');
 let revalidator = require('revalidator');
-let resourceDefaults = require('./resourceDefaults');
+let resourceDefaults = require('./defaults/resource');
 let mongoIdRegEx = /^[0-9a-fA-F]{24}$/;
 
 function objToRevalidatorFormat(obj) {
@@ -76,8 +76,26 @@ module.exports = {
 				}
 
 				// if the schema is already formatted with properties, don't modify it
-				if(resource.schema && !resource.schema.properties) {
-					resources[resource.name].schema = objToRevalidatorFormat(resource.schema);
+				if(resource.schema && resource.schema.properties) {
+					for(let key in resource.schema.properties) {
+						if(resource.schema.properties.hasOwnProperty(key)) {
+							let prop = resource.schema.properties[key];
+							if(prop && prop.type === 'id') {
+								resource.schema.properties[key] = {
+									type: 'string',
+									conform: function(val) {
+										return mongoIdRegEx.test(val);
+									},
+									messages: {
+										type: 'Expected a MongoDB id',
+										format: 'Expected a MongoDB id'
+									},
+									_type: 'id'
+								};
+							}
+						}
+					}
+					resources[resource.name].schema = resource.schema;
 				}
 			}
 		});
@@ -124,18 +142,42 @@ module.exports = {
 						cached: false,
 						elapsed: (+new Date() - params.operationStart)
 					};
+
+					this.config.jsonp ? res.status(200).jsonp(items) : res.status(200).json(items);
+				} else if(req.method === 'POST') {
+					if(items.insertedCount && items.insertedCount === 1) {
+						if(items.insertedIds && items.insertedIds[0]) {
+							res.header('Location', items.insertedIds[0]);
+						}
+						res.status(201).json(items);
+					} else {
+
+					}
+				} else if(req.method === 'PUT') {
+					if(items.valid === true) {
+						res.status(200).json(items);
+					} else {
+						res.status(404).send();
+					}
+				} else {
+					res.json(items);
 				}
-				this.config.jsonp ? res.status(200).jsonp(items) : res.status(200).json(items);
 			};
-			res.presto.error = message => {
-				var data = {
-					error: message
+			res.presto.error = (errorCode, message) => {
+
+				let msg = {
+					message: message || ''
 				};
-				this.config.jsonp ? res.jsonp(data) : res.json(data);
+
+				if(req.method === 'GET') {
+					this.config.jsonp ? res.status(errorCode).jsonp(msg) : res.status(errorCode).json(msg);
+				} else {
+					res.status(errorCode).json(msg);
+				}
 			};
 
 			if (this.initialized !== true) {
-				return res.presto.error('Database failed to initialize');
+				return res.presto.error(500, 'Database failed to initialize');
 			}
 
 			// extend the request object
@@ -291,12 +333,9 @@ module.exports = {
 				let item = req.body,
 					d = +new Date();
 				if(schema) {
-					console.log("@@@ validating schema @@@");
-					console.log("@@@ schema: " + JSON.stringify(schema));
 					let result = revalidator.validate(item, resource.schema);
-					console.log("@@@ result: " + JSON.stringify(result));
 					if(result.valid === false) {
-						return res.presto.error(result.errors && result.errors[0] || 'Data did not align with schema');
+						return res.presto.error(400, result.errors && result.errors[0] || 'Data did not align with schema');
 					}
 				}
 
@@ -336,8 +375,6 @@ module.exports = {
 				if(resource && resource.maxAge) {
 					maxAge = resource.maxAge;
 				}
-
-				console.log("@@@ set cache control to: " + maxAge);
 
 				if(maxAge) {
 					res.header('Cache-Control', 'max-age=' + maxAge);

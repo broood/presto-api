@@ -1,0 +1,95 @@
+<% include partials/head %>
+<div class="container">
+	<div class="page-header">
+		<h1><%= config.name %></h1>
+	</div>
+	<div class="content">
+		<div class="col-md-2">
+			<h3>Resources</h3>
+			<ul>
+			<% for(var name in resources) { %>
+				<li><a class="resource-link" href="#resource-<%=name%>"><%= name %></a></li>
+			<% } %>
+			</ul>
+		</div>
+		<div class="col-md-10">
+			<div id="config">
+				<h3>API Config</h3>
+				<pre>
+					<%= JSON.stringify(config, undefined, 4) %>
+				</pre>
+			</div>
+			<div id="resources">
+				<% for(var name in resources) { var resource = resources[name]; %>
+					<div id="resource-<%= name %>" style="display:none;">
+						<h3><a href="<%= protocol %>://<%= host %><%= config.base %><%= name %>/" target="_blank"><%= protocol %>://<%= host %><%= config.base %><%= name %>/</a></h3>
+						<div>
+							<ul class="list-unstyled">
+								<% if(resource.get === true) { %>
+									<li>
+										<dl>
+											<dt>GET</dt>
+											<dd>
+												<code>
+													curl <%= protocol %>://<%= host %><%= config.base %><%= name %>/
+												</code>
+											</dd>
+											<dd>
+												<code>
+													curl <%= protocol %>://<%= host %><%= config.base %><%= name %>/&lt;identifier&gt;
+												</code>
+											</dd>
+										</dl>
+									</li>
+								<% } %>
+								<% if(resource.post === true) { %>
+									<li>
+										<dl>
+											<dt>POST</dt>
+											<dd>
+												<code>
+													curl -X POST -H 'Content-Type: application/json' -d '{}' <%= protocol %>://<%= host %><%= config.base %><%= name %>/
+												</code>
+											</dd>
+										</dl>
+									</li>
+								<% } %>
+								<% if(resource.put === true) { %>
+									<li>
+										<dl>
+											<dt>PUT</dt>
+											<dd>
+												<code>
+													curl -X PUT -H 'Content-Type: application/json' -d '{}' <%= protocol %>://<%= host %><%= config.base %><%= name %>/&lt;identifier&gt;
+												</code>
+											</dd>
+										</dl>
+									</li>
+								<% } %>
+								<% if(resource.del === true) { %>
+									<li>
+										<dl>
+											<dt>DELETE</dt>
+											<dd>
+												<code>
+													curl -X DELETE <%= protocol %>://<%= host %><%= config.base %><%= name %>/&lt;identifier&gt;
+												</code>
+											</dd>
+										</dl>
+									</li>
+								<% } %>
+							</ul>
+						</div>
+						<div>
+							<h3><u>Resource Config</u></h3>
+							<pre>
+								<%= JSON.stringify(resource, undefined, 4) %>
+							</pre>
+						</div>
+					</div>
+				<% } %>
+			</div>
+		</div>
+	</div>
+</div>
+<% include partials/foot %>
