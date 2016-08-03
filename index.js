@@ -76,7 +76,7 @@ class Presto {
 				if (name) {
 					if (resource.get === true) {
 						this.app.get(this.config.base + name + '/:id', middleware, this._findItemById(resource));
-						this.app.get(this.config.base + name + '*', middleware, this._findItems(resource));
+						this.app.get(this.config.base + name + '/', middleware, this._findItems(resource));
 					}
 					if (resource.post === true) {
 						this.app.post(this.config.base + name, middleware, this._addItem(resource));
@@ -101,6 +101,10 @@ class Presto {
 				});
 			});
 		}
+
+		this.app.get('*', function(req, res) {
+			res.status(404).json({error: 'Unsupported URI'});
+		});
 	}
 
 	_findItems(resource) {
